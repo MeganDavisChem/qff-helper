@@ -14,9 +14,15 @@ class QffHelper:
     freqs_dir = ""
     anpass_refit_energy = 0.0
 
-    anpass_location = "/home/megan/Programs/anpass/anpass_cerebro.x"
-    spectro_location = "/home/megan/Programs/spec3jm.ifort-00.static.x"
-    intder_location = "/home/megan/Programs/intder/Intder2005.x"
+    top_location = (
+        "/home/lailah/Documents/OleMiss/programming/Python/qff_helper/Programs"
+    )
+    #    anpass_location = "/home/megan/Programs/anpass/anpass_cerebro.x"
+    #    spectro_location = "/home/megan/Programs/spec3jm.ifort-00.static.x"
+    #    intder_location = "/home/megan/Programs/intder/Intder2005.x"
+    anpass_location = top_location + "/anpass/anpass_cerebro.x"
+    spectro_location = top_location + "/spec3jm.ifort-00.static.x"
+    intder_location = top_location = "/intder/Intder2005.x"
 
     def setup_spectro_dir(
         self, _files_dir: str, _intder_geom_file: str, _freqs_dir: str = "freqs"
@@ -71,6 +77,7 @@ class QffHelper:
         """Passes relative energies into anpass"""
         # paste the relative energies into the properly formatted anpass file
         # TODO replace this stuff with a classwide dict
+        # TODO clean up this garbage
         anpass_temp = self.freqs_dir + "/anpass.tmp"
 
         with open(anpass_temp) as anpass_temp:
@@ -101,9 +108,7 @@ class QffHelper:
         for i in range(len(anpass_coords)):
             anpass_coords[i].append(self.relative_energies[i])
 
-        print(anpass_coords)
         anpass_in = self.freqs_dir + "/anpass1.in"
-        print(anpass_in)
 
         header_string = "\n".join(anpass_header)
         footer_string = "\n".join(anpass_footer)
@@ -130,9 +135,11 @@ class QffHelper:
         with open(anpass_out) as f:
             anpass1_lines = f.readlines()
 
-        energy_index = [
-            i for i, line in enumerate(anpass1_lines) if "WHERE ENERGY IS" in line
-        ].pop()
+        #        energy_index = [
+        #            i for i, line in enumerate(anpass1_lines) if "WHERE ENERGY IS" in line
+        #        ].pop()
+
+        energy_index = self.find_index(anpass1_lines, "WHERE ENERGY IS")
 
         self.anpass_refit_energy = float(
             anpass1_lines[energy_index].strip("\n").split()[-1]
@@ -141,6 +148,8 @@ class QffHelper:
         anpass_refit_coords = anpass1_lines[
             energy_index + number_of_coordinates + 1
         ].strip("\n")
+
+        self.anpass_refit_coords = anpass_refit_coords
 
         # find stationary point from output file
 
@@ -162,9 +171,46 @@ class QffHelper:
             f.write("\n")
             f.write(footer_string)
 
-    def run_intder_geom():
+        # now run anpass2.out
+        anpass2_out = self.freqs_dir + "/anpass2.out"
+        self.anpass2_out = anpass2_out
+        with open(anpass2_in) as anpass_in, open(anpass2_out, "w") as out_file:
+            subprocess.run(self.anpass_location, stdin=anpass_in, stdout=out_file)
+        # TODO split run anpass and read anpass into separate functions? yes
+
+    def find_index(self, _list_of_lines, _search_string):
+        """Gets the index of a search string for a list of lines"""
+        return [
+            i for i, line in enumerate(_list_of_lines) if _search_string in line
+        ].pop()
+
+    def run_intder_geom(self):
         """Reads anpass2.out and runs intder_geom"""
-        pass
+
+        # TODO do this with try/except and make it more elegant as a standalone  fn
+        intgeom_coords = self.anpass_refit_coords.strip().split()[:-1]
+
+        # TODO definitely refactor this code to store all these
+        intgeom_file = self.freqs_dir + "/intder_geom.in"
+
+        with open(intgeom_file, "a") as f:
+            for i, disp in enumerate(intgeom_coords):
+                j = i + 1
+                f.write("\n" + f"{j:5}      {disp:15}")
+            f.write("\n    0")
+        with open(intgeom_file) as input_file, open(anpass2_out, "w") as out_file:
+            subprocess.run(self.anpass_location, stdin=anpass_in, stdout=out_file)
+
+    def run_program(self, _program, _basename):
+        """Runs a program"""
+        input_file = self.freqs_dir + "/" + _basename + ".in"
+        output_file = self.freqs_dir + "/" + _basename + ".out"
+
+        # TODO change this to dict lookup
+        program = _program_location
+
+        with open(input_file) as input_file, open(output_file, "w") as output_file:
+            subprocess.run(program, stdin=input_file, stdout=output_file)
 
     def run_intder():
         """Reads intder_geom.out and runs intder"""
