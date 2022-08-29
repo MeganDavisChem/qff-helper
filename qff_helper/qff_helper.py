@@ -7,6 +7,8 @@ import subprocess
 class QffHelper:
     def __init__(self, _freqs_dir: str = "freqs"):
         # TODO setup optional initializations with sane defaults
+        cwd = os.getcwd()
+        abs_freqs_dir = cwd + '/' + _freqs_dir
         self.freqs_dir = _freqs_dir
         self.freqs_files = {
             "anpass": _freqs_dir + "/anpass.tmp",
@@ -42,10 +44,16 @@ class QffHelper:
     #    anpass_location = top_location + "/anpass/anpass_cerebro.x"
     #    spectro_location = top_location + "/spec3jm.ifort-00.static.x"
     #   intder_location = top_location = "/intder/Intder2005.x"
+    top = "/home/r410/programs"
+    #    programs = {
+    #        "anpass": "/home/megan/Programs/anpass/anpass_cerebro.x",
+    #        "spectro": "/home/megan/Programs/spec3jm.ifort-00.static.x",
+    #        "intder": "/home/megan/Programs/intder/Intder2005.x",
+    #    }
     programs = {
-        "anpass": "/home/megan/Programs/anpass/anpass_cerebro.x",
-        "spectro": "/home/megan/Programs/spec3jm.ifort-00.static.x",
-        "intder": "/home/megan/Programs/intder/Intder2005.x",
+        "anpass": top + "/anpass/anpass_cerebro.x",
+        "spectro": 'gspectro -cmd "/home/r410/programs/spec3jm.ifort-O0.static.x"',
+        "intder": "/home/r410/programs/intder/Intder2005.x",
     }
 
     def setup_spectro_dir(self, _files_dir: str, _intder_geom_file: str):
@@ -61,7 +69,7 @@ class QffHelper:
                 i for i, line in enumerate(intder_lines) if "DISP" in line
             ].pop()
             int_geom_header = intder_lines[0:disp_index]
-            #TODO might need to fix spacing here
+            # TODO might need to fix spacing here
             int_geom_header.append("DISP 1")
         except:
             print("Could not open inter_geom file")
@@ -97,18 +105,18 @@ class QffHelper:
     def run_anpass(self):
         """Passes relative energies into anpass"""
         # paste the relative energies into the properly formatted anpass file
-        
-        #this is all to do with setting up anpass1.in
-        anpass_temp = self.freqs_files['anpass']
-        anpass1_in = self.input_files['anpass1']
-        anpass1_out = self.output_files['anpass1']
-        anpass2_in = self.input_files['anpass2']
-        anpass2_out = self.output_files['anpass2']
+
+        # this is all to do with setting up anpass1.in
+        anpass_temp = self.freqs_files["anpass"]
+        anpass1_in = self.input_files["anpass1"]
+        anpass1_out = self.output_files["anpass1"]
+        anpass2_in = self.input_files["anpass2"]
+        anpass2_out = self.output_files["anpass2"]
 
         with open(anpass_temp) as anpass_temp:
             anpass_lines = [line.strip("\n") for line in anpass_temp.readlines()]
 
-        datapoint_line_index = self.find_index(anpass_lines, 'DATA POINTS')
+        datapoint_line_index = self.find_index(anpass_lines, "DATA POINTS")
 
         anpass_header = anpass_lines[0 : datapoint_line_index + 3]
 
@@ -138,8 +146,7 @@ class QffHelper:
             [coord_string_template % (tuple(line)) for line in anpass_coords]
         )
 
-
-        #this is where we actually write anpass1
+        # this is where we actually write anpass1
         with open(anpass1_in, "w") as f:
             f.write(header_string)
             f.write("\n")
@@ -147,14 +154,14 @@ class QffHelper:
             f.write("\n")
             f.write(footer_string)
 
-        #this is where we actually run anpass
-        self.run_program('anpass1')
+        # this is where we actually run anpass
+        self.run_program("anpass1")
 
         # now do anpass2
         with open(anpass1_out) as f:
             anpass1_lines = f.readlines()
 
-        #This is all unique to anpass2
+        # This is all unique to anpass2
         energy_index = self.find_index(anpass1_lines, "WHERE ENERGY IS")
 
         self.anpass_refit_energy = float(
@@ -185,7 +192,7 @@ class QffHelper:
             f.write(footer_string)
 
         # now run anpass2.out
-        self.run_program('anpass2')
+        self.run_program("anpass2")
         # TODO split run anpass and read anpass into separate functions? yes
 
     def find_index(self, _list_of_lines, _search_string):
@@ -209,27 +216,60 @@ class QffHelper:
                 f.write("\n" + f"{j:5}      {disp:15}")
             f.write("\n    0")
 
-        #with open(intgeom_file) as input_file, open(anpass2_out, "w") as out_file:
+        # with open(intgeom_file) as input_file, open(anpass2_out, "w") as out_file:
         #    subprocess.run(self.anpass_location, stdin=anpass_in, stdout=out_file)
-        self.run_program('intder_geom')
+        self.run_program("intder_geom")
 
+        outfile = self.output_files["intder_geom"]
+        with open(outfile) as f:
+            geom_lines = f.readlines()
+        new_geo_index = self.find_index(geom_lines, "NEW CARTESIAN GEOMETRY")
+        self.new_geom_str = geom_lines[new_geo_index + 2 :]
+        print("New geometry formed")
 
-    def run_program(self, _program : str):
+    def run_program(self, _program: str):
         """Runs a program. Accepts anpass1 or anpass2 :)"""
         input_file = self.input_files[_program]
         output_file = self.output_files[_program]
+        cwd = os.getcwd()
+        os.chdir(self.freqs_dir)
 
-        if _program == 'anpass1' or _program == 'anpass2':
-            _program = 'anpass'
-        elif _program == 'intder_geom':
-            _program = 'intder'
+        if _program == "anpass1" or _program == "anpass2":
+            _program = "anpass"
+        elif _program == "intder_geom":
+            _program = "intder"
         executable = self.programs[_program]
 
         with open(input_file) as input_file, open(output_file, "w") as output_file:
-            subprocess.run(executable, stdin=input_file, stdout=output_file)
+            subprocess.Popen(executable, stdin=input_file, stdout=output_file)
+        os.chdir(cwd)
 
-    def run_intder():
+    def run_intder(self):
         """Reads intder_geom.out and runs intder"""
+        temp_file = self.freqs_files["intder"]
+
+        with open(temp_file) as f:
+            temp_lines = f.readlines()
+
+        geom_index = self.find_index(temp_lines, "GEOM")
+        header = "".join(temp_lines[:geom_index])
+        atom_list = temp_lines[geom_index + 1]
+        new_geom = "".join(self.new_geom_str)
+
+        infile = self.input_files["intder"]
+
+        # hacky, do this in python (later)
+        cwd = os.getcwd()
+        os.chdir(self.freqs_dir)
+        subprocess.run("format.sh", stdout=force_constants)
+        os.chdir(cwd)
+        with open(infile, "w") as f:
+            f.write(header)
+            f.write(new_geom)
+            f.write(atom_list)
+            f.write(force_constants)
+
+        print("SIC force constants transformed to Cartesian coordinates")
         # cpfort stuff
         pass
 
