@@ -2,6 +2,8 @@
 import os
 import shutil
 import subprocess
+import panda_qff
+import pickle
 
 
 class QffHelper:
@@ -11,23 +13,25 @@ class QffHelper:
         abs_freqs_dir = cwd + '/' + _freqs_dir
         self.freqs_dir = _freqs_dir
         self.freqs_files = {
-            "anpass": _freqs_dir + "/anpass.tmp",
-            "intder": _freqs_dir + "/intder.tmp",
-            "spectro": _freqs_dir + "/spectro.tmp",
+            "anpass": abs_freqs_dir + "/anpass.tmp",
+            "intder": abs_freqs_dir + "/intder.tmp",
+            "spectro": abs_freqs_dir + "/spectro.tmp",
         }
         self.input_files = {
-            "anpass1": _freqs_dir + "/anpass1.in",
-            "anpass2": _freqs_dir + "/anpass2.in",
-            "intder_geom": _freqs_dir + "/intder_geom.in",
-            "intder": _freqs_dir + "/intder.in",
-            "spectro": _freqs_dir + "/spectro.in",
+            "anpass1": abs_freqs_dir + "/anpass1.in",
+            "anpass2": abs_freqs_dir + "/anpass2.in",
+            "intder_geom": abs_freqs_dir + "/intder_geom.in",
+            "intder": abs_freqs_dir + "/intder.in",
+            "spectro": abs_freqs_dir + "/spectro.in",
         }
         self.output_files = {
-            "anpass1": _freqs_dir + "/anpass1.out",
-            "anpass2": _freqs_dir + "/anpass2.out",
-            "intder_geom": _freqs_dir + "/intder_geom.out",
-            "intder": _freqs_dir + "/intder.out",
-            "spectro": _freqs_dir + "/spectro.out",
+            "anpass1": abs_freqs_dir + "/anpass1.out",
+            "anpass2": abs_freqs_dir + "/anpass2.out",
+            "intder_geom": abs_freqs_dir + "/intder_geom.out",
+            "intder": abs_freqs_dir + "/intder.out",
+            "spectro": abs_freqs_dir + "/spectro2.out",
+            "summarize": abs_freqs_dir + "/spectro2.sum",
+            "json": abs_freqs_dir + "/spectro2.json"
         }
 
     files = {}
@@ -44,7 +48,8 @@ class QffHelper:
     #    anpass_location = top_location + "/anpass/anpass_cerebro.x"
     #    spectro_location = top_location + "/spec3jm.ifort-00.static.x"
     #   intder_location = top_location = "/intder/Intder2005.x"
-    top = "/home/r410/programs"
+    #TODO change this based on host. Or allow user input or something.
+    top = "/ddn/home6/r2533/programs"
     #    programs = {
     #        "anpass": "/home/megan/Programs/anpass/anpass_cerebro.x",
     #        "spectro": "/home/megan/Programs/spec3jm.ifort-00.static.x",
@@ -52,8 +57,8 @@ class QffHelper:
     #    }
     programs = {
         "anpass": top + "/anpass/anpass_cerebro.x",
-        "spectro": 'gspectro -cmd "/home/r410/programs/spec3jm.ifort-O0.static.x"',
-        "intder": "/home/r410/programs/intder/Intder2005.x",
+        "spectro": 'gspectro',
+        "intder": top + "/intder/Intder2005.x",
     }
 
     def setup_spectro_dir(self, _files_dir: str, _intder_geom_file: str):
@@ -111,7 +116,7 @@ class QffHelper:
         anpass1_in = self.input_files["anpass1"]
         anpass1_out = self.output_files["anpass1"]
         anpass2_in = self.input_files["anpass2"]
-        anpass2_out = self.output_files["anpass2"]
+        #anpass2_out = self.output_files["anpass2"]
 
         with open(anpass_temp) as anpass_temp:
             anpass_lines = [line.strip("\n") for line in anpass_temp.readlines()]
@@ -226,6 +231,7 @@ class QffHelper:
         new_geo_index = self.find_index(geom_lines, "NEW CARTESIAN GEOMETRY")
         self.new_geom_str = geom_lines[new_geo_index + 2 :]
         print("New geometry formed")
+        #TODO separate reading and running just like for anpass
 
     def run_program(self, _program: str):
         """Runs a program. Accepts anpass1 or anpass2 :)"""
@@ -240,8 +246,12 @@ class QffHelper:
             _program = "intder"
         executable = self.programs[_program]
 
-        with open(input_file) as input_file, open(output_file, "w") as output_file:
-            subprocess.Popen(executable, stdin=input_file, stdout=output_file)
+        if _program == 'spectro':
+            with open(output_file, 'w') as output_file:
+                subprocess.run([executable, input_file])
+        else:
+            with open(input_file) as input_file, open(output_file, "w") as output_file:
+                subprocess.run(executable, stdin=input_file, stdout=output_file)
         os.chdir(cwd)
 
     def run_intder(self):
@@ -261,7 +271,8 @@ class QffHelper:
         # hacky, do this in python (later)
         cwd = os.getcwd()
         os.chdir(self.freqs_dir)
-        subprocess.run("format.sh", stdout=force_constants)
+        force_constants = ''
+        force_constants = subprocess.run("format.sh", stdout=subprocess.PIPE, text=True).stdout
         os.chdir(cwd)
         with open(infile, "w") as f:
             f.write(header)
@@ -269,29 +280,84 @@ class QffHelper:
             f.write(atom_list)
             f.write(force_constants)
 
+        self.run_program('intder')
+
         print("SIC force constants transformed to Cartesian coordinates")
         # cpfort stuff
-        pass
 
-    def run_spectro():
+    def copy_force_constants(self):
+            shutil.copy(self.freqs_dir + '/file15', self.freqs_dir + '/fort.15')
+            shutil.copy(self.freqs_dir + '/file20', self.freqs_dir + '/fort.30')
+            shutil.copy(self.freqs_dir + '/file24', self.freqs_dir + '/fort.40')
+#            shutil.copy(self.freqs_dir + '/spectro.tmp', self.freqs_dir + '/spectro.in')
+
+
+    def run_spectro(self):
         """Reads cartesian force constants and runs spectro"""
-        pass
+        self.copy_force_constants()
+        spectro_temp = self.freqs_files['spectro']
+        infile = self.input_files['spectro']
+        with open(spectro_temp) as f:
+            spectro_lines = f.readlines()
 
-    def run_summarize():
+        geom_index = self.find_index(spectro_lines, 'GEOM') + 2
+        end_geom_index = self.find_index(spectro_lines[geom_index:], '#') - 1
+        
+        header = ''.join(spectro_lines[:geom_index])
+        spectro_geom = spectro_lines[geom_index:end_geom_index+1]
+        footer = ''.join(spectro_lines[end_geom_index+1:])
+
+        atom_numbers = [line.split()[0] for line in spectro_geom]
+        new_geom = self.new_geom_str
+        new_spectro_geom = []
+        for i,line in enumerate(atom_numbers):
+            new_spectro_geom.append('%s %s'%(line, new_geom[i]))
+        new_spectro_geom = ''.join(new_spectro_geom)
+
+        with open(infile, 'w') as f:
+            f.write(header)
+            f.write(new_spectro_geom)
+            f.write(footer)
+
+        self.run_program('spectro')
+        print("Spectro ran")
+
+    def run_summarize(self):
         """Runs summarize program after spectro is output"""
-        pass
+        spectro_out = self.output_files['spectro']
+        summarize_out = self.output_files['summarize']
+        summarize_json = self.output_files['json']
+        with open(summarize_out, 'w') as f:
+            subprocess.run(['summarize', spectro_out], stdout=f)
+        with open(summarize_json, 'w') as f:
+            subprocess.run(['summarize','-json', spectro_out], stdout=f)
 
-    def run_spec_to_latex():
+    def run_spec_to_latex(self, _theory, _molecule):
         """Does spectro to latex stuff"""
-        pass
+        cwd = os.getcwd()
+        os.chdir(self.freqs_dir)
+        summarize_json = self.output_files['json']
+        qff = panda_qff.QFF(summarize_json, _theory, _molecule)
+        prefix = self.freqs_dir + _molecule + _theory
+        csv_file = prefix + '.csv'
+        tex_file = prefix + '.tex'
+        pickle_file = prefix + '.pickle'
+        qff.make_csv(csv_file)
+        qff.print_latex(tex_file)
+        with open(pickle_file, 'wb') as file:
+            pickle.dump(qff, file)
 
-    def auto_spec(_files_dir: str, _intder_geom_file: str, _energy_file: str):
+        os.chdir(cwd)
+        print("Spec\'d to latex")
+        #TODO latex separate files
+
+    def auto_spec(self, _files_dir: str, _intder_geom_file: str, _energy_file: str):
         """Does the whole spectro process...automatically!!!"""
-        setup_spectro_dir(_files_dir, _intder_geom_file)
-        _relative_energies = make_relative_energies(_energy_file)
-        run_anpass(_relative_energies)
-        run_intder_geom()
-        run_intder()
-        run_spectro()
-        run_summarize()
-        spec_to_latex()
+        self.setup_spectro_dir(_files_dir, _intder_geom_file)
+        self.make_relative_energies(_energy_file)
+        self.run_anpass()
+        self.run_intder_geom()
+        self.run_intder()
+        self.run_spectro()
+        self.run_summarize()
+        #self.run_spec_to_latex()
