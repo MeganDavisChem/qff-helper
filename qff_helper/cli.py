@@ -1,15 +1,22 @@
 """Console script for qff_helper."""
 import sys
 import click
-
+import qff_helper
+import qff_helper.qff_helper as qffh
 
 @click.command()
-def main(args=None):
+@click.argument("files_dir") 
+@click.argument("intder_geom_file")
+@click.argument("energy_dat")
+@click.argument("molecule")
+@click.argument("theory")
+@click.argument("freqs_dir")
+
+def main(files_dir, intder_geom_file, energy_dat, molecule, theory, freqs_dir="freqs"):
     """Console script for qff_helper."""
-    click.echo("Replace this message by putting your code into "
-               "qff_helper.cli.main")
-    click.echo("See click documentation at https://click.palletsprojects.com/")
-    return 0
+    helper = qffh.QffHelper(freqs_dir)
+    helper.auto_spec(files_dir, intder_geom_file, energy_dat)
+    helper.run_spec_to_latex(theory, molecule)
 
 
 if __name__ == "__main__":

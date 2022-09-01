@@ -1,8 +1,8 @@
 """Main module."""
 import os
 import shutil
+import spec2latex.panda_qff as panda_qff
 import subprocess
-import panda_qff
 import pickle
 
 
@@ -201,10 +201,11 @@ class QffHelper:
         # TODO split run anpass and read anpass into separate functions? yes
 
     def find_index(self, _list_of_lines, _search_string):
-        """Gets the index of a search string for a list of lines"""
+        """Gets the index of the first occurence search string for a list of lines"""
+        #TODO generalize this to "find indices"?
         return [
             i for i, line in enumerate(_list_of_lines) if _search_string in line
-        ].pop()
+        ][0]
 
     def run_intder_geom(self):
         """Reads anpass2.out and runs intder_geom"""
@@ -228,7 +229,7 @@ class QffHelper:
         outfile = self.output_files["intder_geom"]
         with open(outfile) as f:
             geom_lines = f.readlines()
-        new_geo_index = self.find_index(geom_lines, "NEW CARTESIAN GEOMETRY")
+        new_geo_index = self.find_index(geom_lines, "NEW CARTESIAN GEOMETRY (BOHR)")
         self.new_geom_str = geom_lines[new_geo_index + 2 :]
         print("New geometry formed")
         #TODO separate reading and running just like for anpass
@@ -301,7 +302,7 @@ class QffHelper:
             spectro_lines = f.readlines()
 
         geom_index = self.find_index(spectro_lines, 'GEOM') + 2
-        end_geom_index = self.find_index(spectro_lines[geom_index:], '#') - 1
+        end_geom_index = self.find_index(spectro_lines[geom_index:], '#') + geom_index - 1
         
         header = ''.join(spectro_lines[:geom_index])
         spectro_geom = spectro_lines[geom_index:end_geom_index+1]
@@ -338,7 +339,7 @@ class QffHelper:
         os.chdir(self.freqs_dir)
         summarize_json = self.output_files['json']
         qff = panda_qff.QFF(summarize_json, _theory, _molecule)
-        prefix = self.freqs_dir + _molecule + _theory
+        prefix =  _molecule + _theory
         csv_file = prefix + '.csv'
         tex_file = prefix + '.tex'
         pickle_file = prefix + '.pickle'
