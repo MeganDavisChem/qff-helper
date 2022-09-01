@@ -104,6 +104,7 @@ class QffHelper:
             print("improperly formatted energy.dat file")
         self.energies = energies
         min_energy = min(energies)
+        self.min_energy = min_energy
         self.relative_energies = [energy - min_energy for energy in energies]
         return self.relative_energies
 
@@ -165,6 +166,10 @@ class QffHelper:
         # now do anpass2
         with open(anpass1_out) as f:
             anpass1_lines = f.readlines()
+
+        #find squared sum and minimum energy here to print later
+        sq_sum_index = self.find_index(anpass1_lines, "SQUARED RESIDUALS IS")
+        self.sq_sum = anpass1_lines[sq_sum_index].split()[-1]
 
         # This is all unique to anpass2
         energy_index = self.find_index(anpass1_lines, "WHERE ENERGY IS")
@@ -339,10 +344,12 @@ class QffHelper:
         os.chdir(self.freqs_dir)
         summarize_json = self.output_files['json']
         qff = panda_qff.QFF(summarize_json, _theory, _molecule)
+        self.qff = qff
         prefix =  _molecule + _theory
         csv_file = prefix + '.csv'
         tex_file = prefix + '.tex'
         pickle_file = prefix + '.pickle'
+        self.csv_file = csv_file
         qff.make_csv(csv_file)
         qff.print_latex(tex_file)
         with open(pickle_file, 'wb') as file:
@@ -351,6 +358,32 @@ class QffHelper:
         os.chdir(cwd)
         print("Spec\'d to latex")
         #TODO latex separate files
+
+    def collect_misc_data(self):
+        """Tacks useful stuff to end of panda_qff csv"""
+        cwd = os.getcwd()
+        os.chdir(self.freqs_dir)
+        zpt = self.qff.zpt
+        with open(self.csv_file, 'a') as f:
+            f.write(',\n')
+            f.write(f"ZPT,{zpt}\n")
+            f.write(f"anpass,{self.anpass_refit_energy}\n")
+            f.write(f"minimum,{self.min_energy}\n")
+            f.write(f"squared sum,{self.sq_sum}\n")
+        os.chdir(cwd)
+
+    def format_force_constants(self):
+        """Tacks force constants to the end of panda_qff csv"""
+        #TODO do this in python instead of calling shell script
+        cwd = os.getcwd()
+        os.chdir(self.freqs_dir)
+        with open(self.csv_file, 'a') as f:
+            f.write(',\n')
+        with open(self.csv_file, 'a') as f:
+            subprocess.run('forces_csv.sh', stdout=f)
+        os.chdir(cwd)
+
+
 
     def auto_spec(self, _files_dir: str, _intder_geom_file: str, _energy_file: str):
         """Does the whole spectro process...automatically!!!"""
