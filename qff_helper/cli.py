@@ -22,8 +22,8 @@ def main(files_dir, intder_geom_file, energy_dat, molecule, theory, freqs_dir, m
     helper = qffh.QffHelper(freqs_dir)
     helper.auto_spec(files_dir, intder_geom_file, energy_dat, matdisp)
     helper.run_spec_to_latex(theory, molecule)
-    helper.collect_misc_data()
-    helper.format_force_constants()
+    helper.collect_misc_data(theory)
+    helper.format_force_constants(theory)
 
 
 if __name__ == "__main__":

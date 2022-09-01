@@ -362,10 +362,13 @@ class QffHelper:
         summarize_json = self.output_files["json"]
         qff = panda_qff.QFF(summarize_json, _theory, _molecule)
         self.qff = qff
-        prefix = _molecule + _theory
-        csv_file = prefix + ".csv"
-        tex_file = prefix + ".tex"
-        pickle_file = prefix + ".pickle"
+#        prefix = _molecule + _theory
+#        csv_file = prefix + ".csv"
+#        tex_file = prefix + ".tex"
+#        pickle_file = prefix + ".pickle"
+        csv_file = "data.csv"
+        tex_file = "data.tex"
+        pickle_file = "data.pickle"
         self.csv_file = csv_file
         qff.make_csv(csv_file)
         qff.print_latex(tex_file)
@@ -376,26 +379,28 @@ class QffHelper:
         print("Spec'd to latex")
         # TODO latex separate files
 
-    def collect_misc_data(self):
+    def collect_misc_data(self, _theory):
         """Tacks useful stuff to end of panda_qff csv"""
         cwd = os.getcwd()
         os.chdir(self.freqs_dir)
         zpt = self.qff.zpt
         with open(self.csv_file, "a") as f:
             f.write(",\n")
+            f.write(f",{_theory}\n")
             f.write(f"ZPT,{zpt}\n")
             f.write(f"anpass,{self.anpass_refit_energy}\n")
             f.write(f"minimum,{self.min_energy}\n")
             f.write(f"squared sum,{self.sq_sum}\n")
         os.chdir(cwd)
 
-    def format_force_constants(self):
+    def format_force_constants(self, _theory):
         """Tacks force constants to the end of panda_qff csv"""
         # TODO do this in python instead of calling shell script
         cwd = os.getcwd()
         os.chdir(self.freqs_dir)
         with open(self.csv_file, "a") as f:
             f.write(",\n")
+            f.write(f",{_theory}\n")
         with open(self.csv_file, "a") as f:
             subprocess.run("forces_csv.sh", stdout=f)
         os.chdir(cwd)
