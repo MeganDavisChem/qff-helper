@@ -7,8 +7,22 @@ import pickle
 
 
 class QffHelper:
-    def __init__(self, _freqs_dir: str = "freqs"):
+    def __init__(self, _freqs_dir: str = "freqs", _on_eland: bool = "False"):
         # TODO setup optional initializations with sane defaults
+        if _on_eland:
+            top = "/home/r410/programs"
+            self.programs = {
+                "anpass": top + "/anpass/anpass_cerebro.x",
+                "spectro": 'gspectro -cmd /home/r410/programs/spec3jm.ifort-O0.static.x',
+                "intder": top + "/intder/Intder2005.x",
+            }
+        else:
+            top = "/ddn/home6/r2533/programs"
+            self.programs = {
+                "anpass": top + "/anpass/anpass_cerebro.x",
+                "spectro": "gspectro",
+                "intder": top + "/intder/Intder2005.x",
+            }
         cwd = os.getcwd()
         abs_freqs_dir = cwd + "/" + _freqs_dir
         self.freqs_dir = _freqs_dir
@@ -49,17 +63,11 @@ class QffHelper:
     #    spectro_location = top_location + "/spec3jm.ifort-00.static.x"
     #   intder_location = top_location = "/intder/Intder2005.x"
     # TODO change this based on host. Or allow user input or something.
-    top = "/ddn/home6/r2533/programs"
     #    programs = {
     #        "anpass": "/home/megan/Programs/anpass/anpass_cerebro.x",
     #        "spectro": "/home/megan/Programs/spec3jm.ifort-00.static.x",
     #        "intder": "/home/megan/Programs/intder/Intder2005.x",
     #    }
-    programs = {
-        "anpass": top + "/anpass/anpass_cerebro.x",
-        "spectro": "gspectro",
-        "intder": top + "/intder/Intder2005.x",
-    }
 
     def setup_spectro_dir(
         self, _files_dir: str, _intder_geom_file: str, _matdisp: bool = False
@@ -271,7 +279,10 @@ class QffHelper:
 
         if _program == "spectro":
             with open(output_file, "w") as output_file:
-                subprocess.run([executable, input_file])
+                executable = executable.split()
+                executable.append(input_file)
+                #subprocess.run([executable, input_file])
+                subprocess.run(executable)
         else:
             with open(input_file) as input_file, open(output_file, "w") as output_file:
                 subprocess.run(executable, stdin=input_file, stdout=output_file)
@@ -366,10 +377,10 @@ class QffHelper:
         summarize_json = self.output_files["json"]
         qff = panda_qff.QFF(summarize_json, _theory, _molecule)
         self.qff = qff
-#        prefix = _molecule + _theory
-#        csv_file = prefix + ".csv"
-#        tex_file = prefix + ".tex"
-#        pickle_file = prefix + ".pickle"
+        #        prefix = _molecule + _theory
+        #        csv_file = prefix + ".csv"
+        #        tex_file = prefix + ".tex"
+        #        pickle_file = prefix + ".pickle"
         csv_file = "data.csv"
         tex_file = "data.tex"
         pickle_file = "data.pickle"
