@@ -17,13 +17,22 @@ import qff_helper.qff_helper as qffh
     default=False,
     help="uses matdisp for anpass mostly for HNCO",
 )
-def main(files_dir, intder_geom_file, energy_dat, molecule, theory, freqs_dir, matdisp):
+@click.option(
+        "--lin",
+        is_flag=True,
+        default=False,
+        help="skip a step for linear molecules until I stop being lazy"
+)
+def main(files_dir, intder_geom_file, energy_dat, molecule, theory, freqs_dir,
+        matdisp, lin):
     """Console script for qff_helper."""
     helper = qffh.QffHelper(freqs_dir)
     helper.auto_spec(files_dir, intder_geom_file, energy_dat, matdisp)
-    helper.run_spec_to_latex(theory, molecule)
-    helper.collect_misc_data(theory)
+    if not lin:
+        helper.run_spec_to_latex(theory, molecule)
+    helper.collect_misc_data(theory, lin)
     helper.format_force_constants(theory)
+
 
 
 if __name__ == "__main__":

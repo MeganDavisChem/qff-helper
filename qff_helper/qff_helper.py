@@ -191,10 +191,14 @@ class QffHelper:
         self.anpass_refit_energy = float(
             anpass1_lines[energy_index].strip("\n").split()[-1]
         )
-
-        anpass_refit_coords = anpass1_lines[
-            energy_index + number_of_coordinates + 1
-        ].strip("\n")
+        if number_of_coordinates == 1:
+            anpass_refit_coords = anpass1_lines[
+                energy_index + number_of_coordinates + 2
+            ].strip("\n")
+        else:
+            anpass_refit_coords = anpass1_lines[
+                energy_index + number_of_coordinates + 1
+            ].strip("\n")
 
         self.anpass_refit_coords = anpass_refit_coords
 
@@ -379,11 +383,14 @@ class QffHelper:
         print("Spec'd to latex")
         # TODO latex separate files
 
-    def collect_misc_data(self, _theory):
+    def collect_misc_data(self, _theory, _lin: bool = False):
         """Tacks useful stuff to end of panda_qff csv"""
         cwd = os.getcwd()
         os.chdir(self.freqs_dir)
-        zpt = self.qff.zpt
+        zpt = "not here lol"
+        if not _lin:
+            zpt = self.qff.zpt
+        self.csv_file = "data.csv"
         with open(self.csv_file, "a") as f:
             f.write(",\n")
             f.write(f",{_theory}\n")
