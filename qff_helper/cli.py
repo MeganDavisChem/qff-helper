@@ -42,7 +42,7 @@ def main(
 ):
     """Console script for qff_helper."""
     helper = qffh.QffHelper(freqs_dir, eland)
-    helper.auto_spec(files_dir, intder_geom_file, energy_dat, matdisp)
+    helper.auto_spec(files_dir, intder_geom_file, energy_dat, matdisp, lin)
     if not lin:
         helper.run_spec_to_latex(theory, molecule)
     helper.collect_misc_data(theory, lin)

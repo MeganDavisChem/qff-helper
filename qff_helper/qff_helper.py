@@ -288,7 +288,7 @@ class QffHelper:
                 subprocess.run(executable, stdin=input_file, stdout=output_file)
         os.chdir(cwd)
 
-    def run_intder(self):
+    def run_intder(self, _lin):
         """Reads intder_geom.out and runs intder"""
         temp_file = self.freqs_files["intder"]
 
@@ -297,7 +297,10 @@ class QffHelper:
 
         geom_index = self.find_index(temp_lines, "GEOM")
         header = "".join(temp_lines[:geom_index])
-        atom_list = temp_lines[geom_index + 1]
+        if _lin:
+            atom_list = temp_lines[geom_index + 1:geom_index + 1 + 3]
+        else:
+            atom_list = temp_lines[geom_index + 1]
         new_geom = "".join(self.new_geom_str)
 
         infile = self.input_files["intder"]
@@ -429,13 +432,14 @@ class QffHelper:
         _intder_geom_file: str,
         _energy_file: str,
         _matdisp: bool = False,
+        _lin: bool = False,
     ):
         """Does the whole spectro process...automatically!!!"""
         self.setup_spectro_dir(_files_dir, _intder_geom_file, _matdisp)
         self.make_relative_energies(_energy_file)
         self.run_anpass(_matdisp)
         self.run_intder_geom()
-        self.run_intder()
+        self.run_intder(_lin)
         self.run_spectro()
         self.run_summarize()
         # self.run_spec_to_latex()
