@@ -299,6 +299,7 @@ class QffHelper:
         header = "".join(temp_lines[:geom_index])
         if _lin:
             atom_list = temp_lines[geom_index + 1:geom_index + 1 + 3]
+            atom_list = "".join(atom_list)
         else:
             atom_list = temp_lines[geom_index + 1]
         new_geom = "".join(self.new_geom_str)
@@ -331,7 +332,7 @@ class QffHelper:
 
     #            shutil.copy(self.freqs_dir + '/spectro.tmp', self.freqs_dir + '/spectro.in')
 
-    def run_spectro(self):
+    def run_spectro(self, _lin):
         """Reads cartesian force constants and runs spectro"""
         self.copy_force_constants()
         spectro_temp = self.freqs_files["spectro"]
@@ -351,8 +352,14 @@ class QffHelper:
         atom_numbers = [line.split()[0] for line in spectro_geom]
         new_geom = self.new_geom_str
         new_spectro_geom = []
-        for i, line in enumerate(atom_numbers):
-            new_spectro_geom.append("%s %s" % (line, new_geom[i]))
+        if _lin:
+            for i, line in enumerate(atom_numbers[:-2]):
+                new_spectro_geom.append("%s %s" % (line, new_geom[i]))
+            new_spectro_geom.append(spectro_geom[-2])
+            new_spectro_geom.append(spectro_geom[-1])
+        else:
+            for i, line in enumerate(atom_numbers):
+                new_spectro_geom.append("%s %s" % (line, new_geom[i]))
         new_spectro_geom = "".join(new_spectro_geom)
 
         with open(infile, "w") as f:
@@ -440,6 +447,6 @@ class QffHelper:
         self.run_anpass(_matdisp)
         self.run_intder_geom()
         self.run_intder(_lin)
-        self.run_spectro()
+        self.run_spectro(_lin)
         self.run_summarize()
         # self.run_spec_to_latex()
